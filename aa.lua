@@ -110,7 +110,7 @@ local function spawnBarriers()
     -- Area Steal an Egg:
     -- X: 548 (SeparationLine) s/d 4900 (Ujung Titan Temple). Panjang = 4352, Center X = 2724
     -- Z: -450 s/d 450. Lebar = 900, Center Z = 0
-    -- Y: Ground ~60 s/d 3000 stud (Setinggi mungkin!). Center Y = 1530, Tinggi = 3000
+    -- Y: Ground ~60 s/d 170 stud (Mentok ceiling limit 170). Center Y = 109, Tinggi = 122
     local function createWall(name, cf, sz)
         local p = Instance.new("Part")
         p.Name = name
@@ -127,20 +127,19 @@ local function spawnBarriers()
         return p
     end
 
-    -- 1. Tembok Samping Utara (Z = 450, Y = 50 s/d 250)
-    createWall("NorthBarrierWall", CFrame.new(2724, 150, 450), Vector3.new(4352, 204, 8))
-    -- 2. Tembok Samping Selatan (Z = -450, Y = 50 s/d 250)
-    createWall("SouthBarrierWall", CFrame.new(2724, 150, -450), Vector3.new(4352, 204, 8))
-    -- 3. Tembok Belakang Titan Temple (X = 4900, Y = 50 s/d 250)
-    createWall("EastBarrierWall", CFrame.new(4900, 150, 0), Vector3.new(8, 204, 900))
-    -- 4. Tembok Batas Safe Zone (X = 548, Y = 50 s/d 250)
-    createWall("WestBarrierWall", CFrame.new(548, 150, 0), Vector3.new(8, 204, 900))
-    -- 5. Lantai Pengaman Void (Bawah map di Y = 48 agar tidak pernah tembus jatuh ke void dan mati)
-    createWall("AntiVoidFloor", CFrame.new(2724, 48, 0), Vector3.new(4400, 6, 950))
-    -- 6. Plafon Langit / Atap Anti-Death Ceiling (Y = 250 agar kepala mentok & tidak tembus ke zona mati >= 300)
-    createWall("AntiKillCeiling", CFrame.new(2724, 250, 0), Vector3.new(4400, 6, 950))
+    -- 1. Tembok Samping Utara (Batas luar map Z = 450, Y = 48 s/d 170)
+    createWall("NorthBarrierWall", CFrame.new(2625, 109, 450), Vector3.new(4550, 122, 8))
+    -- 2. Tembok Samping Selatan (Batas luar map Z = -450, Y = 48 s/d 170)
+    createWall("SouthBarrierWall", CFrame.new(2625, 109, -450), Vector3.new(4550, 122, 8))
+    -- 3. Tembok Belakang Titan Temple (Ujung timur map X = 4900, Y = 48 s/d 170)
+    createWall("EastBarrierWall", CFrame.new(4900, 109, 0), Vector3.new(8, 122, 900))
+    -- CATATAN: Pintu masuk Safe Zone (X = 548) 100% TERBUKA! Tidak ada tembok penghalang Safe Zone!
+    -- 4. Lantai Pengaman Void (Bawah map di Y = 48 agar tidak pernah tembus jatuh ke void)
+    createWall("AntiVoidFloor", CFrame.new(2625, 48, 0), Vector3.new(4600, 6, 950))
+    -- 5. Plafon Langit / Atap Anti-Death Ceiling (Y = 170 agar kepala mentok & aman dari batas mati)
+    createWall("AntiKillCeiling", CFrame.new(2625, 170, 0), Vector3.new(4600, 6, 950))
 
-    print("[AdminAbuse] Area Collision Containment Barrier aktif (Atap Ceiling Y=250 & Lantai Anti-Void)!")
+    print("[AdminAbuse] Area Barrier aktif (Plafon Ceiling Limit Y=170 & Jalur Safe Zone 100% Terbuka Bebas)!")
 end
 
 local inputJumpConn = nil
@@ -167,8 +166,8 @@ local function applyInfiniteJump(enabled)
             local hum = c and c:FindFirstChildOfClass("Humanoid")
             local r = c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("RootPart") or c.PrimaryPart)
             if hum and r and hum.Health > 0 then
-                -- Batasi ketinggian maksimal di Y = 245 agar karakter tidak tembus ke zona mati Y >= 300
-                if r.Position.Y >= 245 then
+                -- Batasi ketinggian maksimal di Y = 170 (clamp di Y >= 168) agar mentok aman di plafon
+                if r.Position.Y >= 168 then
                     r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.min(r.AssemblyLinearVelocity.Y, 0), r.AssemblyLinearVelocity.Z)
                     return
                 end
@@ -235,22 +234,54 @@ local function getRarity(cat)
 end
 
 local function isPlayerCarrying()
-    if UIX and UIX.myCarriedEgg and UIX.myCarriedEgg() then
-        return true
+    -- 1. Ambil ID telur yang tercatat sedang dipegang
+    local heldUid = nil
+    if UIX and UIX.myCarriedEgg then
+        heldUid = UIX.myCarriedEgg()
     end
-    local c = LP.Character
-    if c then
-        for _, ch in ipairs(c:GetChildren()) do
-            if ch:IsA("Tool") then return true end
+
+    if not heldUid and EggCmds and EggCmds.GetAreaEggSnapshot then
+        local ok, snap = pcall(EggCmds.GetAreaEggSnapshot)
+        if ok and snap and snap.Records then
+            local myId = LP.UserId
+            for _, r in ipairs(snap.Records) do
+                if r.State == "Carried" and r.CarrierUserId == myId then
+                    heldUid = r.Uid
+                    break
+                end
+            end
         end
     end
-    return false
+
+    -- 2. Jika tidak ada heldUid, player pasti TIDAK sedang carry -> Instant Carry aktif!
+    if not heldUid then
+        return false
+    end
+
+    -- 3. Verifikasi apakah telur yang dipegang BENAR-BENAR belum tersimpan/ter-steal di safe zone:
+    local rec = nil
+    pcall(function()
+        if EggCmds and EggCmds.GetAreaEggRecord then
+            rec = EggCmds.GetAreaEggRecord(heldUid)
+        end
+    end)
+
+    -- Jika record nil, atau statusnya bukan "Carried" (misal sudah "Claimed"), atau CarrierUserId bukan kita:
+    -- Berarti telur sudah sukses tersimpan / ke-steal di safe zone -> Player bebas untuk carry lagi!
+    if not rec or rec.State ~= "Carried" or rec.CarrierUserId ~= LP.UserId then
+        if UIX then UIX._lastHeldUid = nil end
+        return false
+    end
+
+    -- Telur valid dan masih dalam status dibawa (belum selesai ke-steal)
+    return true
 end
 
 local function runInstantCarryCycle()
     if not ST.instantCarry or not alive() then return end
+    -- Hanya abaikan jika player BENAR-BENAR sedang membawa telur yang belum ke-steal
     if isPlayerCarrying() then return end
-    if (os.clock() - _lastInstantCarryAttempt) < 0.25 then return end
+    if (os.clock() - _lastInstantCarryAttempt) < 0.2 then return end
 
     local r = hrp()
     if not r then return end
@@ -269,29 +300,34 @@ local function runInstantCarryCycle()
 
     local slotsFolder = Workspace:FindFirstChild("AreaEggSlotsClient")
     local bestUid = nil
-    local bestDist = 32 -- Radius grab instan (studs)
+    local bestDist = 36 -- Radius grab instan (studs)
 
     for _, rec in ipairs(snap.Records) do
         if rec and rec.Uid then
-            local pos = (rec.BottomCFrame and rec.BottomCFrame.Position)
-                or (rec.BoundsCFrame and rec.BoundsCFrame.Position)
-            if not pos and slotsFolder then
-                local sm = slotsFolder:FindFirstChild(tostring(rec.Uid))
-                if sm then pos = sm:GetPivot().Position end
-            end
+            -- Pastikan telur ini belum di-claim dan belum dibawa player lain!
+            local state = rec.State
+            local isAvailable = (state == "Slot" or state == "Dropped" or (state ~= "Claimed" and (rec.CarrierUserId == nil or rec.CarrierUserId == 0)))
+            if isAvailable then
+                local pos = (rec.BottomCFrame and rec.BottomCFrame.Position)
+                    or (rec.BoundsCFrame and rec.BoundsCFrame.Position)
+                if not pos and slotsFolder then
+                    local sm = slotsFolder:FindFirstChild(tostring(rec.Uid))
+                    if sm then pos = sm:GetPivot().Position end
+                end
 
-            if pos then
-                local dist = (pos - myPos).Magnitude
-                if dist <= bestDist then
-                    local cat = getEggCategory(rec)
-                    local rarity = getRarity(cat)
+                if pos then
+                    local dist = (pos - myPos).Magnitude
+                    if dist <= bestDist then
+                        local cat = getEggCategory(rec)
+                        local rarity = getRarity(cat)
 
-                    -- Filter ketat: HANYA Divine, Eternal, Secret, Cosmic
-                    local isAllowed = (rarity == "Divine" or rarity == "Eternal" or rarity == "Secret" or rarity == "Cosmic")
-                    if isAllowed and ST.instantCarryRarities[rarity] then
-                        bestUid = rec.Uid
-                        bestDist = dist
-                        break -- Ambil yang pertama cocok dalam radius
+                        -- Filter ketat: HANYA Divine, Eternal, Secret, Cosmic
+                        local isAllowed = (rarity == "Divine" or rarity == "Eternal" or rarity == "Secret" or rarity == "Cosmic")
+                        if isAllowed and ST.instantCarryRarities[rarity] then
+                            bestUid = rec.Uid
+                            bestDist = dist
+                            break -- Ambil yang pertama cocok dalam radius
+                        end
                     end
                 end
             end
@@ -304,14 +340,19 @@ local function runInstantCarryCycle()
             if EggCmds and EggCmds.RequestCarryAreaEgg then
                 EggCmds.RequestCarryAreaEgg(bestUid)
             end
-            if slotsFolder then
-                local sm = slotsFolder:FindFirstChild(tostring(bestUid))
-                local prompt = sm and (sm:FindFirstChildOfClass("ProximityPrompt", true) or sm:FindFirstChild("CarryAreaEgg", true))
-                if prompt and prompt.Enabled and fireproximityprompt then
-                    prompt.HoldDuration = 0
-                    prompt.RequiresLineOfSight = false
-                    prompt.MaxActivationDistance = 9999
-                    fireproximityprompt(prompt, 0)
+
+            -- Trigger langsung ProximityPrompt CarryAreaEgg di SmartPromptPart Workspace jika ada dalam jangkauan
+            for _, d in ipairs(Workspace:GetDescendants()) do
+                if d:IsA("ProximityPrompt") and d.Name == "CarryAreaEgg" then
+                    local part = d.Parent
+                    if part and part:IsA("BasePart") and (part.Position - myPos).Magnitude <= 35 then
+                        d.HoldDuration = 0
+                        d.RequiresLineOfSight = false
+                        d.MaxActivationDistance = 9999
+                        if fireproximityprompt then
+                            fireproximityprompt(d, 0)
+                        end
+                    end
                 end
             end
         end)
