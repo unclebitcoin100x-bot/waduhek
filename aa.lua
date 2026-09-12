@@ -141,10 +141,16 @@ local function spawnBarriers()
     print("[AdminAbuse] Area Collision Containment Barrier aktif (Setinggi 3000 stud)!")
 end
 
+local inputJumpConn = nil
+
 local function applyInfiniteJump(enabled)
     if infJumpConn then
         pcall(function() infJumpConn:Disconnect() end)
         infJumpConn = nil
+    end
+    if inputJumpConn then
+        pcall(function() inputJumpConn:Disconnect() end)
+        inputJumpConn = nil
     end
     if touchJumpConn then
         pcall(function() touchJumpConn:Disconnect() end)
@@ -154,20 +160,34 @@ local function applyInfiniteJump(enabled)
     if enabled then
         spawnBarriers()
 
-        -- PC Spacebar Jump Hook
-        infJumpConn = UserInputService.JumpRequest:Connect(function()
-            if not ST.infiniteJump then return end
+        local function doAirJump()
             local c = LP.Character
             local hum = c and c:FindFirstChildOfClass("Humanoid")
             local r = c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("RootPart") or c.PrimaryPart)
             if hum and r and hum.Health > 0 then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                local pwr = (hum.JumpPower and hum.JumpPower > 0) and hum.JumpPower or 50
+                local pwr = (hum.JumpPower and hum.JumpPower > 0) and hum.JumpPower or 52
                 r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.max(r.AssemblyLinearVelocity.Y, pwr), r.AssemblyLinearVelocity.Z)
+                hum.Jump = true
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+
+        -- 1. InputBegan Hook (Mencegat tombol Spasi di udara; Roblox JumpRequest TIDAK TERPANGGIL saat Freefall)
+        inputJumpConn = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
+            if not ST.infiniteJump then return end
+            if input.KeyCode == Enum.KeyCode.Space or (input.UserInputType == Enum.UserInputType.Gamepad1 and input.KeyCode == Enum.KeyCode.ButtonA) then
+                doAirJump()
             end
         end)
 
-        -- Mobile Touch Jump Hook
+        -- 2. Engine JumpRequest Hook (Cadangan saat menyentuh lantai/tangga)
+        infJumpConn = UserInputService.JumpRequest:Connect(function()
+            if not ST.infiniteJump then return end
+            doAirJump()
+        end)
+
+        -- 3. Mobile Touch Jump Hook (Tombol loncat TouchGui di layar HP)
         pcall(function()
             local pGui = LP:FindFirstChildOfClass("PlayerGui")
             local touchGui = pGui and pGui:FindFirstChild("TouchGui")
@@ -175,14 +195,7 @@ local function applyInfiniteJump(enabled)
             if jumpBtn and jumpBtn:IsA("GuiButton") then
                 touchJumpConn = jumpBtn.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.Touch and ST.infiniteJump then
-                        local c = LP.Character
-                        local hum = c and c:FindFirstChildOfClass("Humanoid")
-                        local r = c and (c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart)
-                        if hum and r and hum.Health > 0 then
-                            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                            local pwr = (hum.JumpPower and hum.JumpPower > 0) and hum.JumpPower or 50
-                            r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.max(r.AssemblyLinearVelocity.Y, pwr), r.AssemblyLinearVelocity.Z)
-                        end
+                        doAirJump()
                     end
                 end)
             end
