@@ -4,7 +4,7 @@
 -- GitHub Source: https://raw.githubusercontent.com/unclebitcoin100x-bot/waduhek/refs/heads/main/aa.lua
 --
 -- FITUR:
--- 1. Infinite Jump (Bisa loncat spasi berkali-kali ke langit + Collision Barrier setinggi 3000 stud di area)
+-- 1. Infinite Jump (Bisa loncat spasi berkali-kali ke langit + Collision Barrier dengan atap ceiling Y=250 di area)
 -- 2. Real Godmode (Kloningan menu Real Godmode, kontrol langsung ST.realGodmode)
 -- 3. Instant Carry (Fast Grab Proximity & Remote Carry di dekat telur, filter eksklusif Divine, Eternal, Secret, Cosmic)
 -- 4. Rare Egg ESP (Highlight & Billboard ESP khusus Rare Eggs: Cosmic, Secret, Eternal, Divine & di atasnya)
@@ -127,18 +127,20 @@ local function spawnBarriers()
         return p
     end
 
-    -- 1. Tembok Samping Utara (Z = 450)
-    createWall("NorthBarrierWall", CFrame.new(2724, 1530, 450), Vector3.new(4352, 3000, 8))
-    -- 2. Tembok Samping Selatan (Z = -450)
-    createWall("SouthBarrierWall", CFrame.new(2724, 1530, -450), Vector3.new(4352, 3000, 8))
-    -- 3. Tembok Belakang Titan Temple (X = 4900)
-    createWall("EastBarrierWall", CFrame.new(4900, 1530, 0), Vector3.new(8, 3000, 900))
-    -- 4. Tembok Batas Safe Zone (X = 548)
-    createWall("WestBarrierWall", CFrame.new(548, 1530, 0), Vector3.new(8, 3000, 900))
+    -- 1. Tembok Samping Utara (Z = 450, Y = 50 s/d 250)
+    createWall("NorthBarrierWall", CFrame.new(2724, 150, 450), Vector3.new(4352, 204, 8))
+    -- 2. Tembok Samping Selatan (Z = -450, Y = 50 s/d 250)
+    createWall("SouthBarrierWall", CFrame.new(2724, 150, -450), Vector3.new(4352, 204, 8))
+    -- 3. Tembok Belakang Titan Temple (X = 4900, Y = 50 s/d 250)
+    createWall("EastBarrierWall", CFrame.new(4900, 150, 0), Vector3.new(8, 204, 900))
+    -- 4. Tembok Batas Safe Zone (X = 548, Y = 50 s/d 250)
+    createWall("WestBarrierWall", CFrame.new(548, 150, 0), Vector3.new(8, 204, 900))
     -- 5. Lantai Pengaman Void (Bawah map di Y = 48 agar tidak pernah tembus jatuh ke void dan mati)
     createWall("AntiVoidFloor", CFrame.new(2724, 48, 0), Vector3.new(4400, 6, 950))
+    -- 6. Plafon Langit / Atap Anti-Death Ceiling (Y = 250 agar kepala mentok & tidak tembus ke zona mati >= 300)
+    createWall("AntiKillCeiling", CFrame.new(2724, 250, 0), Vector3.new(4400, 6, 950))
 
-    print("[AdminAbuse] Area Collision Containment Barrier aktif (Setinggi 3000 stud)!")
+    print("[AdminAbuse] Area Collision Containment Barrier aktif (Atap Ceiling Y=250 & Lantai Anti-Void)!")
 end
 
 local inputJumpConn = nil
@@ -165,6 +167,11 @@ local function applyInfiniteJump(enabled)
             local hum = c and c:FindFirstChildOfClass("Humanoid")
             local r = c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("RootPart") or c.PrimaryPart)
             if hum and r and hum.Health > 0 then
+                -- Batasi ketinggian maksimal di Y = 245 agar karakter tidak tembus ke zona mati Y >= 300
+                if r.Position.Y >= 245 then
+                    r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.min(r.AssemblyLinearVelocity.Y, 0), r.AssemblyLinearVelocity.Z)
+                    return
+                end
                 local pwr = (hum.JumpPower and hum.JumpPower > 0) and hum.JumpPower or 52
                 r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.max(r.AssemblyLinearVelocity.Y, pwr), r.AssemblyLinearVelocity.Z)
                 hum.Jump = true
@@ -538,8 +545,8 @@ toggleRow(aaPage, "Infinite Jump (Space to Sky)", n(), function(on)
     ST.infiniteJump = on
     applyInfiniteJump(on)
     saveConfig()
-    showToast("Infinite Jump: " .. (on and "ON (Barrier 3000 stud Active)" or "OFF"))
-end, ST.infiniteJump, "Loncat spasi tanpa batas ke langit + Dinding collision setinggi 3000 stud di area mencegah jatuh/mati")
+    showToast("Infinite Jump: " .. (on and "ON (Ceiling Cap Y=250 Active)" or "OFF"))
+end, ST.infiniteJump, "Loncat spasi tanpa batas ke langit + Dinding collision dengan atap ceiling Y=250 di area mencegah jatuh/mati")
 
 -- 2. Real Godmode Toggle (Kloningan langsung dari Real Godmode menu utama)
 toggleRow(aaPage, "Real Godmode", n(), function(on)
