@@ -1,14 +1,4 @@
--- =========================================================================
--- NASI RENDANG PREMIUM - ADMIN ABUSE MODULE (AA)
--- Modul Eksternal Admin Abuse untuk Steal an Egg
--- GitHub Source: https://raw.githubusercontent.com/unclebitcoin100x-bot/waduhek/refs/heads/main/aa.lua
---
--- FITUR:
--- 1. Infinite Jump (Bisa loncat spasi berkali-kali ke langit + Collision Barrier dengan atap ceiling Y=250 di area)
--- 2. Real Godmode (Kloningan menu Real Godmode, kontrol langsung ST.realGodmode)
--- 3. Instant Carry (Fast Grab Proximity & Remote Carry di dekat telur, filter eksklusif Divine, Eternal, Secret, Cosmic)
--- 4. Rare Egg ESP (Highlight & Billboard ESP khusus Rare Eggs: Cosmic, Secret, Eternal, Divine & di atasnya)
--- =========================================================================
+
 
 local ctx = ... or (getgenv and getgenv() or _G).__ADMIN_ABUSE_CTX or (getgenv and getgenv() or _G).__RIDE_GUARD_CTX
 if type(ctx) ~= "table" then
@@ -586,15 +576,15 @@ toggleRow(aaPage, "Infinite Jump (Space to Sky)", n(), function(on)
     ST.infiniteJump = on
     applyInfiniteJump(on)
     saveConfig()
-    showToast("Infinite Jump: " .. (on and "ON (Ceiling Cap Y=250 Active)" or "OFF"))
-end, ST.infiniteJump, "Loncat spasi tanpa batas ke langit + Dinding collision dengan atap ceiling Y=250 di area mencegah jatuh/mati")
+    showToast("Infinite Jump: " .. (on and "ON (Ceiling Cap Y=170 Active)" or "OFF"))
+end, ST.infiniteJump)
 
 -- 2. Real Godmode Toggle (Kloningan langsung dari Real Godmode menu utama)
 toggleRow(aaPage, "Real Godmode", n(), function(on)
     ST.realGodmode = on
     saveConfig()
     showToast("Real Godmode: " .. (on and "ON" or "OFF"))
-end, ST.realGodmode, "Anti-Stun, True Anti-Ragdoll, Anti-Knockback & Auto Bat Defense di Area Telur")
+end, ST.realGodmode)
 
 sectionLabel(aaPage, "Instant Carry (Fast Grab)", n())
 
@@ -603,7 +593,7 @@ toggleRow(aaPage, "Instant Carry (Near Eggs)", n(), function(on)
     ST.instantCarry = on
     saveConfig()
     showToast("Instant Carry: " .. (on and "ON (Filter Active)" or "OFF"))
-end, ST.instantCarry, "Nge-carry telur secara instan saat dekat telur (hanya berlaku untuk rarity yang dipilih di bawah)")
+end, ST.instantCarry)
 
 -- 3b. Filter Rarity untuk Instant Carry (Divine, Eternal, Secret, Cosmic)
 dropdownMulti(
@@ -633,7 +623,7 @@ toggleRow(aaPage, "Rare Egg ESP", n(), function(on)
     if not on then cleanupESP() end
     saveConfig()
     showToast("Rare Egg ESP: " .. (on and "ON" or "OFF"))
-end, ST.rareEggESP, "Highlight & Nametag 3D hanya untuk telur langka (Cosmic, Secret, Eternal, Divine & di atasnya)")
+end, ST.rareEggESP)
 
 print("[AdminAbuse] Module loaded & Admin Abuse page ready!")
 
