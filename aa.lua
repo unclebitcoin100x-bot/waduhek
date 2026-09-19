@@ -1,4 +1,14 @@
-
+-- =========================================================================
+-- NASI RENDANG PREMIUM - ADMIN ABUSE MODULE (AA)
+-- Modul Eksternal Admin Abuse untuk Steal an Egg
+-- GitHub Source: https://raw.githubusercontent.com/unclebitcoin100x-bot/waduhek/refs/heads/main/aa.lua
+--
+-- FITUR:
+-- 1. Infinite Jump (Bisa loncat spasi berkali-kali ke langit + Collision Barrier dengan atap ceiling Y=250 di area)
+-- 2. Real Godmode (Kloningan menu Real Godmode, kontrol langsung ST.realGodmode)
+-- 3. Instant Carry (Fast Grab Proximity & Remote Carry di dekat telur, filter eksklusif Divine, Eternal, Secret, Cosmic)
+-- 4. Rare Egg ESP (Highlight & Billboard ESP khusus Rare Eggs: Cosmic, Secret, Eternal, Divine & di atasnya)
+-- =========================================================================
 
 local ctx = ... or (getgenv and getgenv() or _G).__ADMIN_ABUSE_CTX or (getgenv and getgenv() or _G).__RIDE_GUARD_CTX
 if type(ctx) ~= "table" then
@@ -47,16 +57,16 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
--- UI Builders dari UI table
-local makePage = UI.makePage
-local sectionLabel = UI.sectionLabel
-local toggleRow = UI.toggleRow
-local toggleDual = UI.toggleDual
-local dropdownMulti = UI.dropdownMulti
-local buttonRow = UI.buttonRow
+-- UI Builders dari UI / UIX table
+local makePage = (UI and UI.makePage) or (UIX and UIX.makePage)
+local sectionLabel = (UI and UI.sectionLabel) or (UIX and UIX.sectionLabel)
+local toggleRow = (UI and UI.toggleRow) or (UIX and UIX.toggleRow)
+local toggleDual = (UI and UI.toggleDual) or (UIX and UIX.toggleDual)
+local dropdownMulti = (UI and UI.dropdownMulti) or (UIX and UIX.dropdownMulti)
+local buttonRow = (UI and UI.buttonRow) or (UIX and UIX.buttonRow)
 
 if not makePage then
-    warn("[AdminAbuse] Error: UI.makePage tidak tersedia!")
+    warn("[AdminAbuse] Error: makePage tidak tersedia di UI maupun UIX!")
     return
 end
 
@@ -97,11 +107,10 @@ local function spawnBarriers()
     barrierFolder.Name = "__AdminAbuseBarriers"
     barrierFolder.Parent = Workspace
 
-    -- Area Steal an Egg:
-    -- X: 548 (SeparationLine) s/d 4900 (Ujung Titan Temple). Panjang = 4352, Center X = 2724
-    -- Z: -450 s/d 450. Lebar = 900, Center Z = 0
-    -- Y: Ground ~60 s/d 170 stud (Mentok ceiling limit 170). Center Y = 109, Tinggi = 122
-    local function createWall(name, cf, sz)
+    -- Anti Void Safety Net:
+    -- Hanya lantai pelindung void di bawah map (Y = 35), TANPA tembok penghalang dan TANPA plafon pembatas.
+    -- Mencakup seluruh area map dari Safe Zone (X = 0) sampai ujung Light Dark (X = 8500+)
+    local function createFloor(name, cf, sz)
         local p = Instance.new("Part")
         p.Name = name
         p.Anchored = true
@@ -109,7 +118,7 @@ local function spawnBarriers()
         p.CanTouch = false
         p.CanQuery = false
         p.CastShadow = false
-        p.Transparency = 1 -- Invisible solid wall
+        p.Transparency = 1 -- Invisible solid floor
         p.Material = Enum.Material.SmoothPlastic
         p.Size = sz
         p.CFrame = cf
@@ -117,19 +126,13 @@ local function spawnBarriers()
         return p
     end
 
-    -- 1. Tembok Samping Utara (Batas luar map Z = 450, Y = 48 s/d 170)
-    createWall("NorthBarrierWall", CFrame.new(2625, 109, 450), Vector3.new(4550, 122, 8))
-    -- 2. Tembok Samping Selatan (Batas luar map Z = -450, Y = 48 s/d 170)
-    createWall("SouthBarrierWall", CFrame.new(2625, 109, -450), Vector3.new(4550, 122, 8))
-    -- 3. Tembok Belakang Titan Temple (Ujung timur map X = 4900, Y = 48 s/d 170)
-    createWall("EastBarrierWall", CFrame.new(4900, 109, 0), Vector3.new(8, 122, 900))
-    -- CATATAN: Pintu masuk Safe Zone (X = 548) 100% TERBUKA! Tidak ada tembok penghalang Safe Zone!
-    -- 4. Lantai Pengaman Void (Bawah map di Y = 48 agar tidak pernah tembus jatuh ke void)
-    createWall("AntiVoidFloor", CFrame.new(2625, 48, 0), Vector3.new(4600, 6, 950))
-    -- 5. Plafon Langit / Atap Anti-Death Ceiling (Y = 170 agar kepala mentok & aman dari batas mati)
-    createWall("AntiKillCeiling", CFrame.new(2625, 170, 0), Vector3.new(4600, 6, 950))
+    -- Memasang 4 segmen lantai pengaman void di Y = 35 (di bawah ground Y=68) tanpa batasan sisi/tembok
+    createFloor("AntiVoidFloor_1", CFrame.new(1000, 35, -350), Vector3.new(2048, 4, 2048))
+    createFloor("AntiVoidFloor_2", CFrame.new(3000, 35, -350), Vector3.new(2048, 4, 2048))
+    createFloor("AntiVoidFloor_3", CFrame.new(5000, 35, -350), Vector3.new(2048, 4, 2048))
+    createFloor("AntiVoidFloor_4", CFrame.new(7000, 35, -350), Vector3.new(2048, 4, 2048))
 
-    print("[AdminAbuse] Area Barrier aktif (Plafon Ceiling Limit Y=170 & Jalur Safe Zone 100% Terbuka Bebas)!")
+    print("[AdminAbuse] AntiVoid Floor aktif (Bebas tembok & bebas masuk Light Dark)!")
 end
 
 local inputJumpConn = nil
@@ -156,11 +159,6 @@ local function applyInfiniteJump(enabled)
             local hum = c and c:FindFirstChildOfClass("Humanoid")
             local r = c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("RootPart") or c.PrimaryPart)
             if hum and r and hum.Health > 0 then
-                -- Batasi ketinggian maksimal di Y = 170 (clamp di Y >= 168) agar mentok aman di plafon
-                if r.Position.Y >= 168 then
-                    r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.min(r.AssemblyLinearVelocity.Y, 0), r.AssemblyLinearVelocity.Z)
-                    return
-                end
                 local pwr = (hum.JumpPower and hum.JumpPower > 0) and hum.JumpPower or 52
                 r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.max(r.AssemblyLinearVelocity.Y, pwr), r.AssemblyLinearVelocity.Z)
                 hum.Jump = true
