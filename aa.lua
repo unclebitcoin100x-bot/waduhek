@@ -1,4 +1,4 @@
--- RING
+-- RING2
 
 local ctx = ... or (getgenv and getgenv() or _G).__ADMIN_ABUSE_CTX or (getgenv and getgenv() or _G).__RIDE_GUARD_CTX
 if type(ctx) ~= "table" then
@@ -98,10 +98,11 @@ local function spawnBarriers()
     barrierFolder.Name = "__AdminAbuseBarriers"
     barrierFolder.Parent = Workspace
 
-    -- Anti Void Safety Net:
-    -- Hanya lantai pelindung void di bawah map (Y = 35), TANPA tembok penghalang dan TANPA plafon pembatas.
-    -- Mencakup seluruh area map dari Safe Zone (X = 0) sampai ujung Light Dark (X = 8500+)
-    local function createFloor(name, cf, sz)
+    -- Area Steal an Egg (Termasuk Area Light Dark & Ujung Timur Map):
+    -- X: 548 (SeparationLine / Pintu Masuk Safe Zone) s/d 8200 (Melewati seluruh area Light Dark). Panjang = 7652 stud
+    -- Z: -900 s/d 500 (Mencakup seluruh koridor dan biome selatan Light Dark). Lebar = 1400 stud, Center Z = -200
+    -- Y: Ground ~60 s/d 170 stud (Ceiling limit Y=170, Floor Y=45). Center Y = 109, Tinggi = 122
+    local function createWall(name, cf, sz)
         local p = Instance.new("Part")
         p.Name = name
         p.Anchored = true
@@ -109,7 +110,7 @@ local function spawnBarriers()
         p.CanTouch = false
         p.CanQuery = false
         p.CastShadow = false
-        p.Transparency = 1 -- Invisible solid floor
+        p.Transparency = 1 -- Invisible solid wall/floor/ceiling
         p.Material = Enum.Material.SmoothPlastic
         p.Size = sz
         p.CFrame = cf
@@ -117,13 +118,30 @@ local function spawnBarriers()
         return p
     end
 
-    -- Memasang 4 segmen lantai pengaman void di Y = 35 (di bawah ground Y=68) tanpa batasan sisi/tembok
-    createFloor("AntiVoidFloor_1", CFrame.new(1000, 35, -350), Vector3.new(2048, 4, 2048))
-    createFloor("AntiVoidFloor_2", CFrame.new(3000, 35, -350), Vector3.new(2048, 4, 2048))
-    createFloor("AntiVoidFloor_3", CFrame.new(5000, 35, -350), Vector3.new(2048, 4, 2048))
-    createFloor("AntiVoidFloor_4", CFrame.new(7000, 35, -350), Vector3.new(2048, 4, 2048))
+    -- 4 Segmen sepanjang X = 548 s/d 8200 (Masing-masing 1950 stud agar tidak mentok limit 2048 stud engine)
+    local segments = {
+        { cX = 1523, szX = 1950 }, -- Segmen 1: Safe Zone boundary s/d Jungle
+        { cX = 3473, szX = 1950 }, -- Segmen 2: Cherry & Cosmic
+        { cX = 5423, szX = 1950 }, -- Segmen 3: Titan Temple s/d Light Dark
+        { cX = 7225, szX = 1950 }, -- Segmen 4: Light Dark s/d Ujung Timur Map
+    }
 
-    print("[AdminAbuse] AntiVoid Floor aktif (Bebas tembok & bebas masuk Light Dark)!")
+    for i, seg in ipairs(segments) do
+        -- 1. Tembok Samping Utara (Batas luar map Z = 500, Y = 48 s/d 170)
+        createWall("NorthBarrierWall_" .. i, CFrame.new(seg.cX, 109, 500), Vector3.new(seg.szX, 122, 8))
+        -- 2. Tembok Samping Selatan (Batas luar map Z = -900, Y = 48 s/d 170)
+        createWall("SouthBarrierWall_" .. i, CFrame.new(seg.cX, 109, -900), Vector3.new(seg.szX, 122, 8))
+        -- 4. Lantai Pengaman Void (Bawah map di Y = 45 agar tidak pernah jatuh ke void)
+        createWall("AntiVoidFloor_" .. i, CFrame.new(seg.cX, 45, -200), Vector3.new(seg.szX, 6, 1450))
+        -- 5. Plafon Langit / Atap Anti-Death Ceiling (Y = 170 agar kepala mentok aman)
+        createWall("AntiKillCeiling_" .. i, CFrame.new(seg.cX, 170, -200), Vector3.new(seg.szX, 6, 1450))
+    end
+
+    -- 3. Tembok Belakang Ujung Timur Map (Dipasang di X = 8200 SETELAH Light Dark, bukan di X = 4900!)
+    createWall("EastBarrierWall", CFrame.new(8200, 109, -200), Vector3.new(8, 122, 1450))
+    -- CATATAN: Pintu masuk Safe Zone (X = 548) 100% TERBUKA! Tidak ada tembok penghalang Safe Zone!
+
+    print("[AdminAbuse] Area Barrier aktif (Tembok Utara/Selatan/Timur X=8200, Plafon Y=170, Area Light Dark Terbuka Penuh)!")
 end
 
 local inputJumpConn = nil
@@ -150,6 +168,11 @@ local function applyInfiniteJump(enabled)
             local hum = c and c:FindFirstChildOfClass("Humanoid")
             local r = c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("RootPart") or c.PrimaryPart)
             if hum and r and hum.Health > 0 then
+                -- Batasi ketinggian maksimal di Y = 170 (clamp di Y >= 168) agar mentok aman di plafon
+                if r.Position.Y >= 168 then
+                    r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.min(r.AssemblyLinearVelocity.Y, 0), r.AssemblyLinearVelocity.Z)
+                    return
+                end
                 local pwr = (hum.JumpPower and hum.JumpPower > 0) and hum.JumpPower or 52
                 r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, math.max(r.AssemblyLinearVelocity.Y, pwr), r.AssemblyLinearVelocity.Z)
                 hum.Jump = true
