@@ -1,14 +1,4 @@
--- =========================================================================
--- NASI RENDANG PREMIUM - ADMIN ABUSE MODULE (AA)
--- Modul Eksternal Admin Abuse untuk Steal an Egg
--- GitHub Source: https://raw.githubusercontent.com/unclebitcoin100x-bot/waduhek/refs/heads/main/aa.lua
---
--- FITUR:
--- 1. Infinite Jump (Bisa loncat spasi berkali-kali ke langit + Collision Barrier dengan atap ceiling Y=250 di area)
--- 2. Real Godmode (Kloningan menu Real Godmode, kontrol langsung ST.realGodmode)
--- 3. Instant Carry (Fast Grab Proximity & Remote Carry di dekat telur, filter eksklusif Divine, Eternal, Secret, Cosmic)
--- 4. Rare Egg ESP (Highlight & Billboard ESP khusus Rare Eggs: Cosmic, Secret, Eternal, Divine & di atasnya)
--- =========================================================================
+-- RING
 
 local ctx = ... or (getgenv and getgenv() or _G).__ADMIN_ABUSE_CTX or (getgenv and getgenv() or _G).__RIDE_GUARD_CTX
 if type(ctx) ~= "table" then
@@ -74,6 +64,7 @@ end
 ST.infiniteJump = ST.infiniteJump or false
 ST.instantCarry = ST.instantCarry or false
 ST.rareEggESP = ST.rareEggESP or false
+ST.autoCollectRings = ST.autoCollectRings or false
 
 -- Default 4 filter rarity Instant Carry
 if type(ST.instantCarryRarities) ~= "table" then
@@ -552,11 +543,262 @@ task.spawn(function()
     end
 end)
 
+-- =========================================================================
+-- FITUR 5: AUTO COLLECT RINGS (SPEED-SWEEP GLIDE & MAGNET FARM - LVD EVENT)
+-- =========================================================================
+local ringSweepThread = nil
+local ringEventConns = {}
+local activeWaveData = {
+    waveId = nil,
+    zone = "LightDark",
+    rings = {},
+    powerUps = {}
+}
+
+local function getLvdRemotes()
+    local ok, remotes = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Shared.Remotes)
+    end)
+    if ok and remotes and remotes.LightVsDarkness then
+        return remotes.LightVsDarkness
+    end
+    return nil
+end
+
+local function ensureLvdTeam(lvdRemotes)
+    local team = LP:GetAttribute("LvdTeam")
+    if type(team) ~= "string" or team == "" then
+        pcall(function()
+            lvdRemotes.AskSelectTeam:FireServer("Random")
+        end)
+    end
+end
+
+local _lastMilestoneCheck = 0
+local function checkClaimMilestones(lvdRemotes)
+    local now = os.clock()
+    if (now - _lastMilestoneCheck) < 3.5 then return end
+    _lastMilestoneCheck = now
+    pcall(function()
+        lvdRemotes.AskClaimMilestone:FireServer(1)
+        lvdRemotes.AskClaimMilestone:FireServer(2)
+        lvdRemotes.AskClaimMilestone:FireServer(3)
+    end)
+end
+
+local function refreshRingsFromServer(lvdRemotes)
+    pcall(function()
+        local wId, z, rTbl, pTbl = lvdRemotes.FetchRings:InvokeServer()
+        if type(wId) == "number" then
+            activeWaveData.waveId = wId
+            activeWaveData.zone = z or activeWaveData.zone
+            if type(rTbl) == "table" then
+                activeWaveData.rings = rTbl
+            end
+            if type(pTbl) == "table" then
+                activeWaveData.powerUps = pTbl
+            end
+        end
+    end)
+end
+
+local function stopRingSweep()
+    if ringSweepThread then
+        task.cancel(ringSweepThread)
+        ringSweepThread = nil
+    end
+    for _, conn in ipairs(ringEventConns) do
+        pcall(function() conn:Disconnect() end)
+    end
+    table.clear(ringEventConns)
+
+    local c = LP.Character
+    local r = c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("RootPart") or c.PrimaryPart)
+    if r then
+        r.AssemblyLinearVelocity = Vector3.zero
+    end
+end
+
+local function startRingSweepLoop()
+    if ringSweepThread then return end
+    ringSweepThread = task.spawn(function()
+        local lvdRemotes = getLvdRemotes()
+        if not lvdRemotes then
+            warn("[RingCollector] Remotes LightVsDarkness tidak ditemukan!")
+            return
+        end
+
+        ensureLvdTeam(lvdRemotes)
+        refreshRingsFromServer(lvdRemotes)
+
+        while ST.autoCollectRings do
+            local char = LP.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local r = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("RootPart") or char.PrimaryPart)
+
+            if hum and r and hum.Health > 0 then
+                ensureLvdTeam(lvdRemotes)
+                checkClaimMilestones(lvdRemotes)
+
+                local targetPos = nil
+                local targetType = nil
+                local targetId = nil
+
+                local charPos = r.Position
+
+                -- 1. Prioritas PowerUps (Magnet / x2)
+                if activeWaveData.powerUps and type(activeWaveData.powerUps) == "table" then
+                    for pId, pData in pairs(activeWaveData.powerUps) do
+                        if type(pData) == "table" and pData.X and pData.Y and pData.Z then
+                            targetPos = Vector3.new(pData.X, pData.Y, pData.Z)
+                            targetType = "PowerUp"
+                            targetId = pId
+                            break
+                        end
+                    end
+                end
+
+                -- 2. Jika tidak ada PowerUp, cari Ring dengan Score tertinggi (Rarity tinggi & Jarak terdekat)
+                if not targetPos and activeWaveData.rings and type(activeWaveData.rings) == "table" then
+                    local bestScore = -999999
+                    for rId, rData in pairs(activeWaveData.rings) do
+                        if type(rData) == "table" and rData.X and rData.Y and rData.Z then
+                            local pos = Vector3.new(rData.X, rData.Y, rData.Z)
+                            local dist = (pos - charPos).Magnitude
+                            local rarity = tonumber(rData.Rarity) or 1
+                            local score = (rarity * 350) - dist
+                            if score > bestScore then
+                                bestScore = score
+                                targetPos = pos
+                                targetType = "Ring"
+                                targetId = rId
+                            end
+                        end
+                    end
+                end
+
+                -- 3. Fallback: Deteksi part visual di Workspace.LightVsDarknessRings jika table server kosong
+                if not targetPos then
+                    local wFolder = Workspace:FindFirstChild("LightVsDarknessRings")
+                    if wFolder then
+                        local nearestDist = 999999
+                        for _, part in ipairs(wFolder:GetChildren()) do
+                            if part:IsA("BasePart") then
+                                local dist = (part.Position - charPos).Magnitude
+                                if dist < nearestDist then
+                                    nearestDist = dist
+                                    targetPos = part.Position
+                                    targetType = "PhysicalRing"
+                                    targetId = part.Name
+                                end
+                            end
+                        end
+                    end
+                end
+
+                -- 4. Eksekusi Glide Cepat (Speed-Sweep) ke Posisi Target
+                if targetPos then
+                    local dist = (targetPos - r.Position).Magnitude
+                    local sweepSpeed = 280 -- studs per second: cepat, stabil & aman dari kick
+                    local stepTime = 0.03
+                    local maxSteps = math.clamp(math.ceil(dist / (sweepSpeed * stepTime)), 1, 60)
+
+                    for step = 1, maxSteps do
+                        if not ST.autoCollectRings or not alive() then break end
+                        local curPos = r.Position
+                        local curDist = (targetPos - curPos).Magnitude
+
+                        -- Jika sudah dalam radius serap (35-40 stud), tembak collect remote
+                        if curDist <= 40 and activeWaveData.waveId then
+                            if targetType == "PowerUp" then
+                                lvdRemotes.AskCollectPowerUp:FireServer(activeWaveData.waveId, targetId)
+                                if activeWaveData.powerUps then activeWaveData.powerUps[targetId] = nil end
+                            else
+                                lvdRemotes.AskCollectRing:FireServer(activeWaveData.waveId, activeWaveData.zone, targetId)
+                                if activeWaveData.rings then activeWaveData.rings[targetId] = nil end
+                            end
+                        end
+
+                        if curDist <= 10 then break end
+
+                        local nextPos = curPos:Lerp(targetPos, math.clamp((step / maxSteps) * 1.5, 0, 1))
+                        r.CFrame = CFrame.new(nextPos, nextPos + (targetPos - curPos).Unit)
+                        r.AssemblyLinearVelocity = Vector3.zero
+                        task.wait(stepTime)
+                    end
+
+                    -- Konfirmasi collect remote saat di target
+                    if activeWaveData.waveId then
+                        if targetType == "PowerUp" then
+                            lvdRemotes.AskCollectPowerUp:FireServer(activeWaveData.waveId, targetId)
+                            if activeWaveData.powerUps then activeWaveData.powerUps[targetId] = nil end
+                        else
+                            lvdRemotes.AskCollectRing:FireServer(activeWaveData.waveId, activeWaveData.zone, targetId)
+                            if activeWaveData.rings then activeWaveData.rings[targetId] = nil end
+                        end
+                    end
+                else
+                    -- Jika sedang tidak ada ring/wave, refresh berkala
+                    refreshRingsFromServer(lvdRemotes)
+                    task.wait(1.5)
+                end
+            else
+                task.wait(0.5)
+            end
+            task.wait(0.02)
+        end
+
+        local c = LP.Character
+        local r = c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("RootPart") or c.PrimaryPart)
+        if r then
+            r.AssemblyLinearVelocity = Vector3.zero
+        end
+        ringSweepThread = nil
+    end)
+end
+
+local function applyAutoCollectRings(enabled)
+    stopRingSweep()
+    if enabled then
+        local lvdRemotes = getLvdRemotes()
+        if lvdRemotes then
+            local c1 = lvdRemotes.RingsSpawned.OnClientEvent:Connect(function(wId, z, rTbl, pTbl)
+                activeWaveData.waveId = wId
+                activeWaveData.zone = z or activeWaveData.zone
+                activeWaveData.rings = (type(rTbl) == "table") and rTbl or {}
+                activeWaveData.powerUps = (type(pTbl) == "table") and pTbl or {}
+            end)
+            local c2 = lvdRemotes.RingCollected.OnClientEvent:Connect(function(collector, rId)
+                if activeWaveData.rings and activeWaveData.rings[rId] then
+                    activeWaveData.rings[rId] = nil
+                end
+            end)
+            local c3 = lvdRemotes.RingsCleared.OnClientEvent:Connect(function(wId)
+                if activeWaveData.waveId == wId then
+                    activeWaveData.rings = {}
+                    activeWaveData.powerUps = {}
+                    activeWaveData.waveId = nil
+                end
+            end)
+            table.insert(ringEventConns, c1)
+            table.insert(ringEventConns, c2)
+            table.insert(ringEventConns, c3)
+            trackConn(c1)
+            trackConn(c2)
+            trackConn(c3)
+        end
+        startRingSweepLoop()
+    end
+end
+
 -- Character Added Listener (Re-apply Infinite Jump & Cleanups on Respawn)
 trackConn(LP.CharacterAdded:Connect(function()
     task.wait(0.5)
     if ST.infiniteJump then
         applyInfiniteJump(true)
+    end
+    if ST.autoCollectRings then
+        applyAutoCollectRings(true)
     end
 end))
 
@@ -622,6 +864,16 @@ toggleRow(aaPage, "Rare Egg ESP", n(), function(on)
     saveConfig()
     showToast("Rare Egg ESP: " .. (on and "ON" or "OFF"))
 end, ST.rareEggESP)
+
+sectionLabel(aaPage, "Light vs Darkness (Event Farm)", n())
+
+-- 5. Auto Collect Rings (Speed-Sweep Glide) Toggle
+toggleRow(aaPage, "Auto Collect Rings (Speed-Sweep)", n(), function(on)
+    ST.autoCollectRings = on
+    applyAutoCollectRings(on)
+    saveConfig()
+    showToast("Ring Collector: " .. (on and "ON (Speed-Sweep Active)" or "OFF"))
+end, ST.autoCollectRings)
 
 print("[AdminAbuse] Module loaded & Admin Abuse page ready!")
 
