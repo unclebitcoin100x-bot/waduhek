@@ -1,20 +1,5 @@
 --[[
-    ================================================================================
-    BIG EGG HUNTER & STANDALONE SERVER HOPPER
-    ================================================================================
-    Target Game : Steal An Egg (PlaceId: 107778070777162)
-    Target File : D:\Roblox\Steal an Egg\Big Egg\big.lua
-    Loader URL  : https://raw.githubusercontent.com/unclebitcoin100x-bot/waduhek/refs/heads/main/big.lua
-
-    Features:
-      1. Compact, modern minimalist draggable HUD (takes minimal screen space, collapsible).
-      2. Automated Big Egg Scanner (queries snapshot, computes ModelWeight * scale^3).
-      3. Minimum KG Filter threshold (customizable via UI input, supports "1M", "1000000", etc.).
-      4. Auto Server Hop every ~15 seconds to the emptiest public server (fewest players).
-      5. Automated VPS Dispatcher (POSTs PlaceId, JobId, Egg Name, Weight, Area, Timestamp to your VPS).
-      6. Teleport Persistence via queue_on_teleport (targeting raw github loader).
-      7. TeleportInitFailed retry & Auto-Reconnect watchdog against disconnects (279, 277, etc.).
-    ================================================================================
+s
 ]]
 
 -- ------------------------------------------------------------------------------
@@ -731,10 +716,11 @@ local function sendDiscordWebhook(eggInfo)
 
     task.spawn(function()
         local tpCmd = string.format("game:GetService('TeleportService'):TeleportToPlaceInstance(%d, %q, game.Players.LocalPlayer)", PLACE_ID, game.JobId)
-        local directUri = string.format("roblox://experiences/start?placeId=%d&gameInstanceId=%s", PLACE_ID, game.JobId)
+        local webJoinUrl = string.format("https://www.roblox.com/games/start?placeId=%d&gameInstanceId=%s", PLACE_ID, game.JobId)
 
         local embed = {
             title = "🦖 MASSIVE EGG DETECTED!",
+            url = webJoinUrl, -- Clicking the title also opens the server directly
             description = string.format("A giant egg exceeding **%s** threshold has been discovered in this server!", formatKg(Config.MinKg)),
             color = 16753920, -- Gold / Orange Accent Container
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
@@ -775,13 +761,13 @@ local function sendDiscordWebhook(eggInfo)
                     inline = false
                 },
                 {
-                    name = "🚀 Direct Teleport Script (Volt / Potassium / Syn)",
-                    value = string.format("```lua\n%s\n```", tpCmd),
+                    name = "🌐 Web Join Link",
+                    value = string.format("[👉 **Click Here to Join Game Server (Browser)**](%s)", webJoinUrl),
                     inline = false
                 },
                 {
-                    name = "🔗 Quick Launch Link",
-                    value = string.format("[Click to Join Game Session Directly](%s)", directUri),
+                    name = "🚀 Direct Teleport Script (Volt / Potassium / Syn)",
+                    value = string.format("```lua\n%s\n```", tpCmd),
                     inline = false
                 }
             },
@@ -792,7 +778,20 @@ local function sendDiscordWebhook(eggInfo)
 
         local payload = {
             content = string.format("🚨 **BIG EGG ALERT:** **%s** (%s) in **%s**! @here", tostring(eggInfo.name), tostring(eggInfo.weightFormatted), tostring(eggInfo.area)),
-            embeds = { embed }
+            embeds = { embed },
+            components = {
+                {
+                    type = 1, -- Action Row
+                    components = {
+                        {
+                            type = 2, -- Button
+                            style = 5, -- Link Style
+                            label = "🎮 Join Server (Roblox)",
+                            url = webJoinUrl
+                        }
+                    }
+                }
+            }
         }
 
         local encoded = HttpService:JSONEncode(payload)
