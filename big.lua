@@ -777,7 +777,7 @@ local function sendDiscordWebhook(eggInfo)
         }
 
         local payload = {
-            content = string.format("🚨 **BIG EGG ALERT:** **%s** (%s) in **%s**! @here", tostring(eggInfo.name), tostring(eggInfo.weightFormatted), tostring(eggInfo.area)),
+            content = string.format("🚨 **BIG EGG ALERT:** **%s** (%s) in **%s**!", tostring(eggInfo.name), tostring(eggInfo.weightFormatted), tostring(eggInfo.area)),
             embeds = { embed },
             components = {
                 {
