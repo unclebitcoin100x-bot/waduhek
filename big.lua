@@ -36,9 +36,9 @@ local CFG_FILE   = CFG_FOLDER .. "/config.json"
 local Config = {
     MinKg        = 1000000, -- Default 1,000,000 KG
     VpsUrl       = "",      -- Endpoint on VPS e.g. http://123.45.67.89:8080/api/big-egg
-    WebhookUrl   = "https://discord.com/api/webhooks/1552786020947202053/pZSyB3MtrGQHCAy4TO6qL-5gryCWDrmqPCBNphvC_VKD2JuwotbVb7Hm9nsXzhtrWpxB",
+    WebhookUrl   = "https://discord.com/api/webhooks/1552819671693009049/pXwUhw1epIWuUD4quqL_1ssajOBAM-HGyFa-_xqHM45NAIaWniV21GYUuW0eXZ3xSpFG",
     AutoHop      = true,    -- Auto hop active
-    HopInterval  = 7,      -- 15 seconds per server
+    HopInterval  = 4,      -- 15 seconds per server
     LastKnownEgg = "None",
     TotalFound   = 0,
 }
