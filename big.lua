@@ -53,7 +53,7 @@ local Config = {
     VpsUrl       = "",      -- Endpoint on VPS e.g. http://123.45.67.89:8080/api/big-egg
     WebhookUrl   = "https://discord.com/api/webhooks/1552786020947202053/pZSyB3MtrGQHCAy4TO6qL-5gryCWDrmqPCBNphvC_VKD2JuwotbVb7Hm9nsXzhtrWpxB",
     AutoHop      = true,    -- Auto hop active
-    HopInterval  = 15,      -- 15 seconds per server
+    HopInterval  = 7,      -- 15 seconds per server
     LastKnownEgg = "None",
     TotalFound   = 0,
 }
