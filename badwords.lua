@@ -62,7 +62,7 @@ local ID_UTUH = {
     ["croot"]=3, ["sange"]=3, ["sangean"]=3, ["horni"]=3, ["birahi"]=3,
     ["pelacur"]=3, ["lonte"]=3, ["lont"]=3, ["sundal"]=3, ["jablay"]=3,
     ["bispak"]=3, ["gigolo"]=3, ["germo"]=3, ["mucikari"]=3, ["wts"]=3,
-    ["bokep"]=3, ["bokeb"]=3, ["mesum"]=3, ["cabul"]=3, ["perek"]=3,
+    ["bokep"]=3, ["bokeb"]=3, ["mesum"]=3, ["cabul"]=3, ["perek"]=3, 
 
     -- berat: hinaan identitas
     ["bencong"]=3, ["banci"]=3, ["bences"]=3, ["homo"]=3, ["hombreng"]=3,
@@ -95,7 +95,7 @@ local ID_UTUH = {
     ["gendeng"]=1, ["edan"]=1, ["stress"]=1, ["autis"]=1, ["cacat"]=1,
     ["jelek"]=1, ["norak"]=1, ["kampungan"]=1, ["udik"]=1, ["ndeso"]=1,
     ["miskin"]=1, ["gembel"]=1, ["sampah"]=1, ["kacung"]=1, ["babu"]=1,
-    ["jongos"]=1, ["culun"]=1, ["cupu"]=1, ["lemot"]=1, ["katrok"]=1,
+    ["jongos"]=1, ["culun"]=1, ["cupu"]=1, ["lemot"]=1, ["katrok"]=1, ["bug"]=1,
 }
 
 --=============================================================================
