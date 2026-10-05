@@ -95,7 +95,7 @@ local ID_UTUH = {
     ["gendeng"]=1, ["edan"]=1, ["stress"]=1, ["autis"]=1, ["cacat"]=1,
     ["jelek"]=1, ["norak"]=1, ["kampungan"]=1, ["udik"]=1, ["ndeso"]=1,
     ["miskin"]=1, ["gembel"]=1, ["sampah"]=1, ["kacung"]=1, ["babu"]=1,
-    ["jongos"]=1, ["culun"]=1, ["cupu"]=1, ["lemot"]=1, ["katrok"]=1, ["bug"]=1,
+    ["jongos"]=1, ["culun"]=1, ["cupu"]=1, ["lemot"]=1, ["katrok"]=1, 
 }
 
 --=============================================================================
@@ -108,7 +108,9 @@ local ID_POTONG = {
     ["bangsat"]=2, ["bajingan"]=2, ["keparat"]=2, ["brengsek"]=2,
     ["jancok"]=2, ["jancuk"]=2, ["kampret"]=2, ["pelacur"]=3,
     ["bencong"]=3, ["mucikari"]=3, ["kontol"]=3, ["memek"]=3,
-    ["goblok"]=1, ["jembut"]=3, ["colmek"]=3, ["bispak"]=3,
+    ["goblok"]=1, ["jembut"]=3, ["colmek"]=3, ["bispak"]=3, ["bug"]=3,
+    ["sena"]=3, ["chilli"]=3, ["miranda"]=3, ["lennon"]=3,
+    ["bigfroot"]=3, ["hama"]=3, ["sampah"]=3, ["smph"]=3,
 }
 
 --=============================================================================
