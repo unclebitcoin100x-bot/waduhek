@@ -86,7 +86,8 @@ local ID_UTUH = {
     ["monyet"]=2, ["monyong"]=2, ["mnyt"]=2, ["lutung"]=2,
     ["bacot"]=2, ["bct"]=2, ["bacod"]=2, ["cangkem"]=2, ["cocot"]=2,
     ["ngaco"]=1, ["sompret"]=1, ["sompral"]=2, ["kunyuk"]=2,
-    ["pantek"]=2, ["pantat"]=2, ["silit"]=2, ["burit"]=2,
+    ["pantek"]=2, ["pantat"]=2, ["silit"]=2, ["burit"]=2, ["yesus"]=2, ["muhammad"]=2,
+    ["islam"]=2, ["kristen"]=2, ["kafir"]=2, ["yahudi"]=2,
 
     -- ringan: hinaan ringan
     ["tolol"]=1, ["tll"]=1, ["toll"]=1, ["goblok"]=1, ["gblk"]=1,
